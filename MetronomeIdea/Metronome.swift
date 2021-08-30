@@ -29,12 +29,13 @@ class Metronome {
         try! audioEngine.start()
     }
     
-    private func generateBuffer(bpm: Double) -> AVAudioPCMBuffer {
+    private func generateBuffer(bpm: Double, beatsPerBar: UInt32, beatNote: UInt32) -> AVAudioPCMBuffer {
         
         audioFileMainClick.framePosition = 0
         audioFileAccentedClick.framePosition = 0
         
-        let beatLength = AVAudioFrameCount(audioFileMainClick.processingFormat.sampleRate * 60 / bpm)
+        let multiplier: Double = Double(4) / Double(beatNote)
+        let beatLength = AVAudioFrameCount(audioFileMainClick.processingFormat.sampleRate * 60 * multiplier / bpm)
         let bufferMainClick = AVAudioPCMBuffer(pcmFormat: audioFileMainClick.processingFormat,
                                                frameCapacity: beatLength)!
         try! audioFileMainClick.read(into: bufferMainClick)
@@ -46,8 +47,8 @@ class Metronome {
         bufferAccentedClick.frameLength = beatLength
         
         let bufferBar = AVAudioPCMBuffer(pcmFormat: audioFileMainClick.processingFormat,
-                                         frameCapacity: 4 * beatLength)!
-        bufferBar.frameLength = 4 * beatLength
+                                         frameCapacity: beatLength * UInt32(beatsPerBar))!
+        bufferBar.frameLength = beatLength * UInt32(beatsPerBar)
         
         // don't forget if we have two or more channels then we have to multiply memory pointee at channels count
         let channelCount = Int(audioFileMainClick.processingFormat.channelCount)
@@ -64,7 +65,7 @@ class Metronome {
         // one time for first beat
         barArray.append(contentsOf: accentedClickArray)
         // three times for regular clicks
-        for _ in 1...3 {
+        for _ in 1...(beatsPerBar - 1) {
             barArray.append(contentsOf: mainClickArray)
         }
         bufferBar.floatChannelData!.pointee.assign(from: barArray,
@@ -72,9 +73,9 @@ class Metronome {
         return bufferBar
     }
     
-    func play(bpm: Double) {
+    func play(bpm: Double, beatsPerBar: UInt32, beatNote: UInt32) {
         
-        let buffer = generateBuffer(bpm: bpm)
+        let buffer = generateBuffer(bpm: bpm, beatsPerBar: beatsPerBar, beatNote: beatNote)
         
         if audioPlayerNode.isPlaying {
             audioPlayerNode.scheduleBuffer(buffer, at: nil, options: .interruptsAtLoop, completionHandler: nil)
@@ -82,7 +83,9 @@ class Metronome {
             self.audioPlayerNode.play()
         }
         
-        self.audioPlayerNode.scheduleBuffer(buffer, at: nil, options: .loops, completionHandler: nil)
+        for i: UInt32 in 0...3 {
+            self.audioPlayerNode.scheduleBuffer(buffer, at: AVAudioTime(sampleTime: AVAudioFramePosition(i * UInt32(buffer.frameLength)), atRate: audioFileMainClick.processingFormat.sampleRate), options: .interruptsAtLoop, completionHandler: nil)
+        }
         
     }
     

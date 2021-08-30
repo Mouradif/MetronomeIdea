@@ -12,6 +12,8 @@ class ViewController: UIViewController {
 
     @IBOutlet weak var stepper: UIStepper!
     @IBOutlet weak var tempoLabel: UILabel!
+    let beatsPerBar: UInt32 = 5
+    let beatNote: UInt32 = 8
     
     let metronome: Metronome = {
         let highUrl = Bundle.main.url(forResource: "High", withExtension: "wav")!
@@ -35,7 +37,11 @@ class ViewController: UIViewController {
     }
     
     @IBAction func startPlayback(_ sender: Any) {
-        metronome.play(bpm: Double(tempo))
+        metronome.play(
+            bpm: Double(tempo),
+            beatsPerBar: beatsPerBar,
+            beatNote: beatNote
+        )
     }
     
     @IBAction func stopPlayback(_ sender: Any) {
@@ -45,7 +51,9 @@ class ViewController: UIViewController {
     @IBAction func stepperValueChanged(_ sender: Any) {
         tempo = Int(stepper.value)
         if metronome.isPlaying {
-            metronome.play(bpm: Double(tempo))
+            metronome.play(bpm: Double(tempo),
+                           beatsPerBar: beatsPerBar,
+                           beatNote: beatNote)
         }
     }
 }
